@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>左右分割：リアルタイム履歴書フォーム＋PDF保存（ブロックごとに次ページへ）</title>
+
+    <!-- ★ html2pdf.jsライブラリ -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.9.3/dist/html2pdf.bundle.min.js"
+    ></script>
+    <!-- Google Fonts（例） -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Istok+Web&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /************************************************************
+       * 全体2カラムレイアウト
+       ************************************************************/
+      * {
+        box-sizing: border-box;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        font-family: sans-serif;
+        height: 100%;
+      }
+
+      .container {
+        display: flex; /* 左右2カラム */
+        height: 100vh; /* 画面全体の高さを確保 */
+      }
+      .left,
+      .right {
+        width: 50%;
+        overflow-y: auto; 
+        overflow-x: hidden;
+        padding: 0 20px 20px 20px;
+      }
+
+      /* --- 左カラム：フォーム（見た目はそのまま） --- */
+      .left {
+        background-color: #fff;
+        border-right: 1px solid #ccc;
+        color: #2c3e50;
+        position: relative;
+        box-sizing: border-box;
+      }
+      .header-left {
+        background-color: #fff;
+        top: 0;
+        margin-left: -20px;
+        margin-right: -20px;
+        margin-top: -20px;
+        text-align: center;
+        border-bottom: 1px solid #ccc;
+        padding: 0;
+        margin-bottom: 20px;
+        z-index: 9999;
+      }
+      .header-left h1 {
+        padding-top: 20px;
+        padding-bottom: 0px;
+      }
+      .header-left .smart {
+        color: #000;
+        font-family: "Istok Web", sans-serif; 
+        font-size: 40px;
+      }
+      .header-left .dash {
+        font-family: "Istok Web", sans-serif;
+        font-size: 40px;
+        margin: 0 5px;
+      }
+      .header-left .cv {
+        color: #2cddb4;
+        font-family: "Istok Web", sans-serif;
+        font-size: 40px;
+      }
+      .header-left h2 {
+        font-family: "Istok Web", sans-serif;
+        font-size: 18px;
+        color: #333;
+        padding-top: 0%;
+      }
+      .header-left hr {
+        margin: 10px auto;
+        border: none;
+        border-top: 1px solid #ccc;
+        width: 90%;
+      }
+
+      .choice-box {
+        border: 1px solid #000;
+        margin: 0 auto;
+        width: 95%;
+        margin-top: 40px;
+        text-align: left;
+        font-size: 25.5px;
+        color: #000;
+      }
+      .first-box {
+        border: 1px solid #000;
+        margin: 0 auto;
+        width: 90%;
+        height: 15%;
+        margin-top: 60px;
+        text-align: center;
+        border-radius: 100px;
+        font-size: 27px;
+        color: #000;
+        background-color: #d8fff9;
+      }
+      .upload-wrapper {
+        margin-bottom: 20px;
+        margin-left: 80px;
+      }
+      .upload-area {
+        border: 2px dashed #ccc;
+        border-radius: 6px;
+        text-align: center;
+        padding: 20px;
+        cursor: pointer;
+        transition: border-color 0.3s, background-color 0.3s;
+        height: 110px;
+        width: 53%;
+        text-align: center;
+      }
+      .upload-text {
+        color: #888;
+        font-size: 0.9rem;
+      }
+      .upload-area:hover {
+        border-color: #aaa;
+        background-color: #f8f8f8;
+      }
+      .form-group {
+        margin-top: 30px;
+        color: #000;
+        font-size: 20px;
+        border-radius: 40px;
+        width: 75%;
+        margin-left: 80px;
+      }
+      #bulk-generate-btn {
+        margin-left: 80px;
+      }
+      .second-box {
+        border: 1px solid #000;
+        margin: 0 auto;
+        width: 90%;
+        height: 15%;
+        margin-top: 60px;
+        text-align: center;
+        border-radius: 100px;
+        font-size: 27px;
+        color: #000;
+        background-color: #d8fff9;
+      }
+      .name-group {
+        width: 300px;
+        margin-left: 80px;
+        margin-top: 80px;
+      }
+      .furigana-group {
+        width: 300px;
+        margin-left: 140px;
+        margin-top: 80px;
+        margin-right: 30px;
+      }
+      .row-inline {
+        display: flex;
+        align-items: flex-start;
+      }
+      .birthday-box {
+        margin-bottom: 20px;
+        margin-left: 80px;
+        margin-top: 70px;
+      }
+      .birthday-box label {
+        display: inline-block;
+        margin-bottom: 8px;
+        font-size: 16px;
+      }
+      .birthday-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .year-month-select,
+      .day-age-select,
+      .gender-select {
+        border-radius: 20px;
+        text-align: center;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      .year-month-select {
+        width: 60px;
+        height: 36px;
+      }
+      .day-age-select {
+        width: 60px;
+        height: 36px;
+      }
+      .gender-select {
+        width: 80px;
+        height: 36px;
+      }
+      .gender-label {
+        margin-left: 16px;
+        margin-right: 4px;
+      }
+      .photo-upload-container {
+        margin-top: 30px;
+        width: 200px;
+      }
+      .photo-upload-container > label {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 8px;
+      }
+      .photo-placeholder {
+        width: 120px;
+        height: 180px;
+        border: 2px dashed #ccc;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        cursor: pointer;
+        font-size: 14px;
+        color: #ccc;
+        background-color: #fff;
+      }
+      label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 6px;
+        color: #2c3e50;
+      }
+      input[type="text"],
+      textarea,
+      input[type="file"] {
+        width: 100%;
+        padding: 8px;
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+        border: 1px solid #c2bfbf;
+        border-radius: 50px;
+        background: #fff;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      input[type="text"]:focus,
+      textarea:focus,
+      input[type="file"]:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 4px rgba(52, 152, 219, 0.5);
+        outline: none;
+      }
+      textarea {
+        min-height: 60px;
+        resize: vertical;
+      }
+      .section-title {
+        margin-top: 25px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        border-bottom: 2px solid #2c3e50;
+        padding-bottom: 5px;
+        margin-bottom: 10px;
+        color: #2c3e50;
+      }
+      .post-code-group,
+      .address-furigana-group,
+      .address-group,
+      .tell-group,
+      .mail-group,
+      .t-post-code-group,
+      .t-address-furigana-group,
+      .t-address-group,
+      .t-tell-group,
+      .t-mail-group {
+        font-size: 1.2rem;
+        margin-left: 80px;
+      }
+      .post-code-group { width: 150px; }
+      .address-furigana-group { width: 680px; }
+      .address-group { width: 680px; }
+      .tell-group { width: 340px; }
+      .mail-group { width: 340px; }
+      .t-post-code-group { width: 150px; }
+      .t-address-furigana-group { width: 680px; }
+      .t-address-group { width: 680px; }
+      .t-tell-group { width: 340px; }
+      .t-mail-group { width: 340px; }
+
+      .form-inline {
+        display: flex;
+        gap: 8px;
+      }
+      .row-container {
+        align-items: center;
+        gap: 10px;
+        border: 2px dashed #ccc;
+        border-radius: 10px;
+        padding: 12px;
+        background: #fff;
+        margin-bottom: 16px;
+        align-items: flex-start;
+      }
+      .edu-year, .edu-month,
+      .license-year, .license-month {
+        width: 60px;
+        height: 30px;
+        border-radius: 20px;
+        text-align: center;
+        border: 1px solid #c2bfbf;
+      }
+      .edu-work {
+        width: 250px;
+        height: 30px;
+        border-radius: 20px;
+      }
+      .skill-history {
+        width: 250px;
+        height: 30px;
+        border-radius: 20px;
+        text-align: center;
+      }
+      .buttons-inline {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+      .btn {
+        display: inline-block;
+        color: #fff;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        margin-right: 5px;
+        transition: background 0.3s, opacity 0.3s;
+      }
+      .btn:hover {
+        opacity: 0.9;
+      }
+      .btn-primary {
+        background: #3498db;
+      }
+      .btn-danger {
+        background: #e74c3c;
+      }
+      .btn-primary:hover {
+        background: #2980b9;
+      }
+      .btn-danger:hover {
+        background: #c0392b;
+      }
+      .pdf-btn-wrapper {
+        text-align: center;
+        margin-top: 40px;
+      }
+      .pdf-btn {
+        margin-top: 20px;
+        background: #2ecc71;
+        font-size: 1rem;
+        display: block;
+        border-radius: 20px;
+        margin: 0 auto;
+      }
+
+      /************************************************************
+       * 右カラム：履歴書プレビュー (複数ページ分割)
+       ************************************************************/
+      .right {
+        background-color: #d9d9d9;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 20px;
+      }
+
+      /* 複数ページを縦に並べるコンテナ */
+      .resume-pages {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      /* 1ページ(A4) */
+      .resume-page {
+        background-color: #fff;
+        width: 210mm; /* A4幅 */
+        height: 297mm; /* A4高さ */
+        box-sizing: border-box;
+        padding: 10mm;
+        margin: 20px 0;
+        position: relative;
+        overflow: hidden;
+        border: 2px solid #000;
+      }
+
+      /* ページ内の内容(.resume-content) */
+      .resume-content {
+        margin: 0;
+        padding: 0;
+      }
+
+      /* 印刷時に強制改ページ */
+      @media print {
+        .resume-page {
+          page-break-after: always;
+        }
+        .resume-page:last-child {
+          page-break-after: auto;
+        }
+      }
+
+      .resume-preview {
+        color: #000;
+      }
+      .resume-content .title {
+        font-size: 16pt;
+        font-weight: bold;
+        margin-bottom: 0;
+      }
+      .resume-content .date-right {
+        text-align: right;
+        font-size: 11pt;
+        font-weight: normal;
+        margin-right: 5mm;
+      }
+      .top-section {
+        display: flex;
+        align-items: end;
+        gap: 10px;
+      }
+
+      .name-furigana-table {
+        width: 80%;
+        border: 2px solid #000;
+        border-collapse: separate;
+        border-spacing: 0;
+        table-layout: fixed;
+        margin-bottom: 0;
+      }
+      tr.furigana-box td.furigana-label {
+        width: 20px;
+        height: 10px;
+        padding: 5px;
+        border-right: 1px solid #000;
+        text-align: center;
+        font-size: 10px;
+      }
+      tr.furigana-box td.furigana-value {
+        width: 60px;
+        padding: 5px;
+        text-align: center;
+      }
+      tr.name-table td.name-label {
+        width: 20px;
+        height: 80px;
+        padding: 5px;
+        border-right: 1px solid #000;
+        text-align: center;
+      }
+      tr.name-table td.name-value-left {
+        width: 20px;
+        height: 80px;
+        padding: 5px;
+        text-align: center;
+        font-size: 10px;
+      }
+
+      .birthday-gender-table {
+        width: 100%;
+        border: 2px solid #000;
+        border-collapse: separate;
+        margin-top: 3%;
+        table-layout: fixed;
+      }
+      td.birthday-label {
+        width: 19.5%;
+        height: 40px;
+        border-right: 1px solid #000;
+        text-align: center;
+        font-size: 10px;
+      }
+      .birthday-value {
+        width: 200px;
+        border-right: 1px solid #000;
+        text-align: center;
+        font-size: 13px;
+      }
+      .gender-value {
+        text-align: center;
+        width: 10%;
+      }
+      .photo-box {
+        width: 96px;
+        height: 125px;
+        overflow: hidden;
+        text-align: center;
+      }
+      .photo-box img {
+        width: 100%;
+        height: auto;
+        object-fit: cover;
+      }
+
+      .contact-info-table {
+        width: 100%;
+        border: 2px solid #000;
+        margin-top: 3%;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+      .contact-info {
+        height: 20px;
+        text-align: center;
+      }
+      th.address-furigana-label {
+        border-bottom: 1px dotted #000;
+        border-right: 1px solid #000;
+        width: 19.5%;
+        font-size: 10px;
+      }
+      td.address-furigana-value {
+        border-bottom: 1px dotted #000;
+        border-right: 1px solid #000;
+        width: 50%;
+      }
+      th.tel-label {
+        width: 10%;
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+        font-size: 10px;
+      }
+      td.tel-value {
+        border-bottom: 1px solid #000;
+        width: 120%;
+      }
+      th.address-label {
+        border-right: 1px solid #000;
+        height: 40px;
+        font-size: 10px;
+      }
+      td.address-value {
+        border-right: 1px solid #000;
+        text-align: left;
+      }
+      th.email-label {
+        border-right: 1px solid #000;
+        font-size: 10px;
+      }
+
+      .alt-contact-table {
+        width: 100%;
+        border: 2px solid #000;
+        margin-top: 3%;
+        border-spacing: 0;
+      }
+      .alt-contact-info {
+        height: 20px;
+        text-align: center;
+      }
+      th.alt-address-furigana-label {
+        border-bottom: 1px dotted #000;
+        border-right: 1px solid #000;
+        width: 19.5%;
+        font-size: 10px;
+      }
+      td.alt-address-furigana-value {
+        border-bottom: 1px dotted #000;
+        border-right: 1px solid #000;
+        width: 50%;
+      }
+      th.alt-tel-label {
+        width: 10%;
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+        font-size: 10px;
+      }
+      td.alt-tel-value {
+        border-bottom: 1px solid #000;
+        width: 120%;
+      }
+      th.alt-address-label {
+        border-right: 1px solid #000;
+        height: 40px;
+        font-size: 10px;
+      }
+      td.alt-address-value {
+        border-right: 1px solid #000;
+        text-align: left;
+      }
+      th.alt-email-label {
+        border-right: 1px solid #000;
+        font-size: 10px;
+      }
+
+      .education-table {
+        width: 100%;
+        border: 2px solid #000;
+        margin-top: 3%;
+        border-spacing: 0;
+      }
+      .education-info {
+        height: 30px;
+        text-align: center;
+      }
+      th.education-year {
+        width: 15mm;
+        height: 7mm;
+        border-right: 1px dotted #000;
+        font-size: 10px;
+      }
+      th.education-container-month {
+        width: 15mm;
+        height: 7mm;
+        border-right: 1px dotted #000;
+        font-size: 10px;
+      }
+      th.education-history {
+        width: 80%;
+        height: 7mm;
+        font-size: 10px;
+      }
+      td.education-year-value {
+        border-right: 1px dotted #000;
+        border-top: 1px dotted #000;
+        height: 40px;
+      }
+      td.education-container-month-value {
+        border-right: 1px dotted #000;
+        border-top: 1px dotted #000;
+        height: 40px;
+      }
+      td.education-history-value {
+        border-top: 1px dotted #000;
+        height: 40px;
+      }
+
+      .skill-table {
+        width: 100%;
+        border: 2px solid #000;
+        margin-top: 3%;
+        border-spacing: 0;
+      }
+      .skill-info {
+        height: 30px;
+        text-align: center;
+      }
+      th.skill-year {
+        width: 15mm;
+        height: 7mm;
+        border-right: 1px dotted #000;
+        font-size: 10px;
+      }
+      th.skill-container-month {
+        width: 15mm;
+        height: 7mm;
+        border-right: 1px dotted #000;
+        font-size: 10px;
+      }
+      th.skill-history {
+        width: 80%;
+        height: 7mm;
+        font-size: 10px;
+      }
+      td.skill-year-value {
+        border-right: 1px dotted #000;
+        border-top: 1px dotted #000;
+        height: 40px;
+      }
+      td.skill-container-month-value {
+        border-right: 1px dotted #000;
+        border-top: 1px dotted #000;
+        height: 40px;
+      }
+      td.skill-history-value {
+        border-top: 1px dotted #000;
+        height: 40px;
+      }
+
+      .motivation-table {
+        width: 100%;
+        border: 2px solid #000;
+        margin-top: 3%;
+      }
+      th.motivation-label {
+        height: 5mm;
+        text-align: left;
+        vertical-align: top;
+        font-size: 10px;
+      }
+      td.motivation-value {
+        height: 110px;
+        text-align: left;
+        vertical-align: top;
+      }
+      .request-table {
+        width: 100%;
+        border: 2px solid #000;
+        margin-top: 3%;
+      }
+      th.request-label {
+        height: 5mm;
+        text-align: left;
+        vertical-align: top;
+        font-size: 10px;
+      }
+      td.request-value {
+        height: 110px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      table,
+      tr,
+      td,
+      th {
+        page-break-inside: avoid; 
+      }
+
+      /* ブロック（.block）単位で次ページへ移動 */
+      .block {
+        margin-bottom: 20px; /* ブロック間余白 */
+      }
+    </style>
+
+    <!-- html2canvas, jspdf（html2pdf内で使用） -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  </head>
+
+  <body>
+    <div class="container">
+      <!-- ============== 左カラム：フォーム ============== -->
+      <div class="left">
+        <div class="header-left">
+          <h1>
+            <span class="smart">Smart</span>
+            <span class="dash">-</span>
+            <span class="cv">CV</span>
+          </h1>
+          <h2>[完全無料] 履歴書・職務経歴書自動作成サービス</h2>
+        </div>
+
+        <table class="choice-box">
+          <td>
+            <strong
+              >既に経歴書をお持ちの方は、➀にお進みください（予想作成時間３０秒）<br />
+              お持ちでない方は、②にお進みください。（予想作成時間５分）</strong
+            >
+          </td>
+        </table>
+        <table class="first-box">
+          <td>
+            <strong
+              >➀に当てはまる方は、以下の項目への入力をお願いします。</strong
+            >
+          </td>
+        </table>
+
+        <div class="form-group upload-wrapper">
+          <label for="resume-file" class="upload-label"
+            >1. 経歴書などをお持ちの場合アップロードしてください。</label
+          >
+          <div
+            class="upload-area"
+            onclick="document.getElementById('resume-file').click()"
+          >
+            <p class="upload-text">
+              PDFもしくは、docs形式のデータをアップロードしてください。
+            </p>
+          </div>
+          <input
+            type="file"
+            id="resume-file"
+            accept=".pdf,.doc,.docx"
+            style="display: none"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="additional-info">
+            2. 追加したい情報がある場合記入してください。
+          </label>
+          <textarea id="additional-info" placeholder="" rows="3"></textarea>
+        </div>
+        <button id="bulk-generate-btn" class="btn btn-primary">
+          一括生成する
+        </button>
+
+        <table class="second-box">
+          <td>
+            <strong>②に当てはまる方は、以下の項目への入力をお願いします。</strong>
+          </td>
+        </table>
+
+        <!-- 名前・ふりがな -->
+        <div class="section-title">情報</div>
+        <div class="row-inline">
+          <div class="form-group name-group">
+            <label for="input-name">名前</label>
+            <input type="text" id="input-name" placeholder="" />
+          </div>
+          <div class="form-group furigana-group">
+            <label for="input-furigana">ふりがな</label>
+            <input type="text" id="input-furigana" placeholder="" />
+          </div>
+        </div>
+
+        <div class="birthday-box">
+          <label>生年月日</label>
+          <div class="birthday-container">
+            <select id="birth-year" class="year-month-select">
+              <option value="">--</option>
+            </select>
+            <span>年</span>
+            <select id="birth-month" class="year-month-select">
+              <option value="">--</option>
+            </select>
+            <span>月</span>
+            <select id="birth-day" class="day-age-select">
+              <option value="">--</option>
+            </select>
+            <span>日</span>
+            <select id="age" class="day-age-select">
+              <option value="">--</option>
+            </select>
+            <span>歳</span>
+            <label for="gender" class="gender-label">性別</label>
+            <select id="gender" class="gender-select">
+              <option value="">--</option>
+              <option value="男性">男性</option>
+              <option value="女性">女性</option>
+              <option value="その他">その他</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 写真 -->
+        <div class="form-group photo-upload-container">
+          <label for="input-photo">証明写真</label>
+          <div
+            class="photo-placeholder"
+            onclick="document.getElementById('input-photo').click()"
+          >
+            画像を追加して<br />
+            ください。
+          </div>
+          <input
+            type="file"
+            id="input-photo"
+            accept="image/*"
+            style="display: none"
+          />
+        </div>
+
+        <!-- 住所 -->
+        <div class="section-title">住所</div>
+        <div class="post-code-group">
+          <label for="input-postal-code">郵便番号</label>
+          <input type="text" id="input-postal-code" placeholder="" />
+        </div>
+        <div class="address-furigana-group">
+          <label for="input-address-furigana">フリガナ</label>
+          <input type="text" id="input-address-furigana" placeholder="" />
+        </div>
+        <div class="address-group">
+          <label for="input-address">現住所</label>
+          <input type="text" id="input-address" placeholder="" />
+        </div>
+        <div class="tell-group">
+          <label for="input-phone">電話</label>
+          <input type="text" id="input-phone" placeholder="" />
+        </div>
+        <div class="mail-group">
+          <label for="input-email">Email</label>
+          <input type="text" id="input-email" placeholder="" />
+        </div>
+
+        <!-- 連絡先（現住所以外） -->
+        <div class="section-title">連絡先（現住所以外）</div>
+        <div class="t-post-code-group">
+          <label for="input-alt-postal-code">郵便番号</label>
+          <input type="text" id="input-alt-postal-code" />
+        </div>
+        <div class="t-address-furigana-group">
+          <label for="input-alt-address-furigana">フリガナ</label>
+          <input type="text" id="input-alt-address-furigana" />
+        </div>
+        <div class="t-address-group">
+          <label for="input-alt-address">住所</label>
+          <input type="text" id="input-alt-address" />
+        </div>
+        <div class="t-tell-group">
+          <label for="input-alt-phone">電話</label>
+          <input type="text" id="input-alt-phone" />
+        </div>
+        <div class="t-mail-group">
+          <label for="input-alt-email">Email</label>
+          <input type="text" id="input-alt-email" placeholder="" />
+        </div>
+
+        <!-- 学歴・職歴 -->
+        <div class="section-title">学歴・職歴</div>
+        <div id="education-container">
+          <div class="row-container">
+            <div class="form-inline">
+              <select class="edu-year"><option value="">--</option></select>
+              <select class="edu-month"><option value="">--</option></select>
+              <input
+                type="text"
+                class="edu-work"
+                placeholder="例：〇〇大学 入学"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="buttons-inline">
+          <button type="button" class="btn btn-primary" id="add-education-row">
+            ＋ 追加する
+          </button>
+          <button type="button" class="btn btn-danger" id="remove-education-last">
+            － 削除
+          </button>
+        </div>
+
+        <!-- 免許・資格 -->
+        <div class="section-title">免許・資格</div>
+        <div id="skill-container">
+          <div class="row-container">
+            <div class="form-inline">
+              <select class="license-year"><option value="">--</option></select>
+              <select class="license-month"><option value="">--</option></select>
+              <input
+                type="text"
+                class="skill-history"
+                placeholder="例：普通自動車運転免許"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="buttons-inline">
+          <button type="button" class="btn btn-primary" id="add-skill-row">
+            ＋ 追加する
+          </button>
+          <button type="button" class="btn btn-danger" id="remove-skill-last">
+            － 削除
+          </button>
+        </div>
+
+        <!-- 志望動機 -->
+        <div class="section-title">志望動機・特技・アピールポイントなど</div>
+        <div class="form-group">
+          <textarea id="input-motivation" placeholder=""></textarea>
+        </div>
+
+        <!-- 本人希望 -->
+        <div class="section-title">
+          本人希望（給与・職種・勤務時間・勤務地 等）
+        </div>
+        <div class="form-group">
+          <textarea id="input-request" placeholder=""></textarea>
+        </div>
+
+        <!-- PDF保存ボタン -->
+        <div class="pdf-btn-wrapper">
+          <button id="pdf-save-btn" class="btn pdf-btn">PDF保存</button>
+        </div>
+      </div>
+      <!-- /left -->
+
+      <!-- ============== 右カラム：プレビュー(複数ページ) ============== -->
+      <div class="right">
+        <div class="resume-pages" id="resume-pages">
+          <!-- JSで1ページ目を生成し、その中にブロックを並べる -->
+        </div>
+      </div>
+    </div>
+    <!-- /container -->
+
+    <script>
+      /**********************************************************
+       * 0) 履歴書本体のHTML（“ブロックごと”に分ける）
+       **********************************************************/
+      const resumeTemplate = `
+        <div class="resume-preview">
+          <div class="resume-content" id="resume-content-whole">
+            <!-- タイトル・日付 -->
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5mm;">
+              <div class="title">履歴書</div>
+              <div class="date-right" id="preview-today-date"></div>
+            </div>
+
+            <!-- ① 名前・ふりがな + 写真 -->
+            <div class="block">
+              <div class="top-section">
+                <table class="name-furigana-table">
+                  <tr class="furigana-box">
+                    <td class="furigana-label">ふりがな</td>
+                    <td class="furigana-value">
+                      <span id="preview-furigana"></span>
+                    </td>
+                  </tr>
+                  <tr class="name-table">
+                    <td class="name-label">氏名</td>
+                    <td class="name-value-left">
+                      <span id="preview-name" style="font-weight: bold"></span>
+                    </td>
+                  </tr>
+                </table>
+                <div class="photo-box">
+                  <img id="preview-photo-img" />
+                </div>
+              </div>
+            </div>
+
+            <!-- ② 生年月日・性別 -->
+            <div class="block">
+              <table class="birthday-gender-table">
+                <tr class="birthday-box">
+                  <td class="birthday-label">生年月日</td>
+                  <td class="birthday-value">
+                    <span id="preview-birth-year"></span>年
+                    <span id="preview-birth-month"></span>月
+                    <span id="preview-birth-day"></span>日（
+                    <span id="preview-age"></span>歳）
+                  </td>
+                  <td class="gender-value">
+                    <span id="preview-gender"></span>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- ③ 電話番号・Email・現住所 -->
+            <div class="block">
+              <table class="contact-info-table">
+                <tr class="contact-info">
+                  <th class="address-furigana-label">ふりがな</th>
+                  <td class="address-furigana-value">
+                    <span id="preview-address-furigana"></span>
+                  </td>
+                  <th class="tel-label">電話</th>
+                  <td class="tel-value">
+                    <span id="preview-phone"></span>
+                  </td>
+                </tr>
+                <tr>
+                  <th class="address-label">現住所</th>
+                  <td class="address-value">
+                    〒<span id="preview-postal-code"></span><br />
+                    <span id="preview-address"></span>
+                  </td>
+                  <th class="email-label">Email</th>
+                  <td class="email-value">
+                    <span id="preview-email"></span>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- ④ 連絡先（現住所以外） -->
+            <div class="block">
+              <table class="alt-contact-table">
+                <tr class="alt-contact-info">
+                  <th class="alt-address-furigana-label">ふりがな</th>
+                  <td class="alt-address-furigana-value">
+                    <span id="preview-alt-address-furigana"></span>
+                  </td>
+                  <th class="alt-tel-label">電話</th>
+                  <td class="alt-tel-value">
+                    <span id="preview-alt-phone"></span>
+                  </td>
+                </tr>
+                <tr>
+                  <th class="alt-address-label">現住所</th>
+                  <td class="alt-address-value">
+                    〒<span id="preview-alt-postal-code"></span><br />
+                    <span id="preview-alt-address"></span>
+                  </td>
+                  <th class="alt-email-label">Email</th>
+                  <td class="email-value">
+                    <span id="preview-alt-email"></span>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- ⑤ 学歴・職歴 -->
+            <div class="block">
+              <table class="education-table">
+                <tr class="education-info">
+                  <th class="education-year">年</th>
+                  <th class="education-container-month">月</th>
+                  <th class="education-history">学歴・職歴</th>
+                </tr>
+                <tr class="education-value">
+                  <td class="education-year-value"></td>
+                  <td class="education-container-month-value"></td>
+                  <td class="education-history-value"></td>
+                </tr>
+                <tbody id="preview-education-body"></tbody>
+              </table>
+            </div>
+
+            <!-- ⑥ 免許・資格 -->
+            <div class="block">
+              <table class="skill-table">
+                <tr class="skill-info">
+                  <th class="skill-year">年</th>
+                  <th class="skill-container-month">月</th>
+                  <th class="skill-history">免許・資格</th>
+                </tr>
+                <tr class="skill-value">
+                  <td class="skill-year-value"></td>
+                  <td class="skill-container-month-value"></td>
+                  <td class="skill-history-value"></td>
+                </tr>
+                <tbody id="preview-skill-body"></tbody>
+              </table>
+            </div>
+
+            <!-- ⑦ 志望動機 -->
+            <div class="block">
+              <table class="motivation-table">
+                <tr>
+                  <th class="motivation-label">
+                    志望動機・特技・アピールポイントなど
+                  </th>
+                </tr>
+                <tr>
+                  <td class="motivation-value">
+                    <span id="preview-motivation"></span>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- ⑧ 本人希望 -->
+            <div class="block">
+              <table class="request-table">
+                <tr>
+                  <th class="request-label">
+                    本人希望（給与・職種・勤務時間・勤務地 等）
+                  </th>
+                </tr>
+                <tr>
+                  <td class="request-value">
+                    <span id="preview-request"></span>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      `;
+
+      /**********************************************************
+       * 1) 1ページ目を生成
+       **********************************************************/
+      const pagesContainer = document.getElementById("resume-pages");
+      function createNewPageDOM() {
+        const pageEl = document.createElement("div");
+        pageEl.classList.add("resume-page");
+        pageEl.innerHTML = resumeTemplate;
+        pagesContainer.appendChild(pageEl);
+        return pageEl;
+      }
+      let currentPage = createNewPageDOM();
+
+
+      /**********************************************************
+       * 2) 本日の日付（令和◯年）
+       **********************************************************/
+      function setTodayDate() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth() + 1;
+        const d = now.getDate();
+        const reiwa = y - 2018;
+        document.getElementById("preview-today-date").textContent =
+          `令和 ${reiwa} 年 ${m} 月 ${d} 日現在`;
+      }
+      setTodayDate();
+
+
+      /**********************************************************
+       * 3) 左カラム入力 -> プレビュー反映
+       **********************************************************/
+      function bindTextSync(inputSel, previewSel) {
+        const inputEl = document.querySelector(inputSel);
+        const prevEl = document.querySelector(previewSel);
+        if (!inputEl || !prevEl) return;
+
+        function sync() {
+          prevEl.textContent = inputEl.value;
+          splitPagesIfOverflow();
+        }
+        inputEl.addEventListener("input", sync);
+        sync();
+      }
+      // 名前・ふりがな等
+      bindTextSync("#input-name", "#preview-name");
+      bindTextSync("#input-furigana", "#preview-furigana");
+      bindTextSync("#input-postal-code", "#preview-postal-code");
+      bindTextSync("#input-address-furigana", "#preview-address-furigana");
+      bindTextSync("#input-address", "#preview-address");
+      bindTextSync("#input-phone", "#preview-phone");
+      bindTextSync("#input-email", "#preview-email");
+      bindTextSync("#input-alt-postal-code", "#preview-alt-postal-code");
+      bindTextSync("#input-alt-address-furigana", "#preview-alt-address-furigana");
+      bindTextSync("#input-alt-address", "#preview-alt-address");
+      bindTextSync("#input-alt-phone", "#preview-alt-phone");
+      bindTextSync("#input-alt-email", "#preview-alt-email");
+      bindTextSync("#input-motivation", "#preview-motivation");
+      bindTextSync("#input-request", "#preview-request");
+
+      // 生年月日
+      const birthYear = document.getElementById("birth-year");
+      const birthMonth = document.getElementById("birth-month");
+      const birthDay = document.getElementById("birth-day");
+      const prevBirthYear = document.getElementById("preview-birth-year");
+      const prevBirthMonth = document.getElementById("preview-birth-month");
+      const prevBirthDay = document.getElementById("preview-birth-day");
+      function syncBirth() {
+        prevBirthYear.textContent = birthYear.value;
+        prevBirthMonth.textContent = birthMonth.value;
+        prevBirthDay.textContent = birthDay.value;
+        splitPagesIfOverflow();
+      }
+      [birthYear, birthMonth, birthDay].forEach(el =>
+        el.addEventListener("input", syncBirth)
+      );
+
+      // 年齢
+      bindTextSync("#age", "#preview-age");
+      // 性別
+      bindTextSync("#gender", "#preview-gender");
+
+      // 写真
+      const photoInput = document.getElementById("input-photo");
+      const previewPhoto = document.getElementById("preview-photo-img");
+      photoInput.addEventListener("change", () => {
+        const file = photoInput.files[0];
+        if (!file) {
+          previewPhoto.src = "";
+          splitPagesIfOverflow();
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewPhoto.src = e.target.result;
+          splitPagesIfOverflow();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // 生年月日セレクト
+      const yearNow = new Date().getFullYear();
+      function populateYear(select) {
+        for (let y = 1900; y <= yearNow; y++) {
+          const opt = document.createElement("option");
+          opt.value = y;
+          opt.textContent = y;
+          select.appendChild(opt);
+        }
+      }
+      function populateMonth(select) {
+        for (let i = 1; i <= 12; i++) {
+          const opt = document.createElement("option");
+          opt.value = i;
+          opt.textContent = i;
+          select.appendChild(opt);
+        }
+      }
+      populateYear(birthYear);
+      populateMonth(birthMonth);
+      for (let i = 1; i <= 31; i++) {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = i;
+        birthDay.appendChild(opt);
+      }
+      const ageSelect = document.getElementById("age");
+      for (let i = 0; i <= 100; i++) {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = i;
+        ageSelect.appendChild(opt);
+      }
+
+
+      /**********************************************************
+       * 4) 学歴・職歴、免許・資格：追加/削除 & プレビュー同期
+       **********************************************************/
+      // --- 学歴・職歴 ---
+      const eduContainer = document.getElementById("education-container");
+      const eduPreviewBody = document.getElementById("preview-education-body");
+      const defEduYear = eduContainer.querySelector(".edu-year");
+      const defEduMonth = eduContainer.querySelector(".edu-month");
+      const defEduWork = eduContainer.querySelector(".edu-work");
+      const defTdYear = document.querySelector(".education-year-value");
+      const defTdMonth = document.querySelector(".education-container-month-value");
+      const defTdWork = document.querySelector(".education-history-value");
+
+      function syncDefEdu() {
+        defTdYear.textContent = defEduYear.value;
+        defTdMonth.textContent = defEduMonth.value;
+        defTdWork.textContent = defEduWork.value;
+        splitPagesIfOverflow();
+      }
+      [defEduYear, defEduMonth, defEduWork].forEach(el =>
+        el.addEventListener("input", syncDefEdu)
+      );
+      populateYear(defEduYear);
+      populateMonth(defEduMonth);
+
+      document.getElementById("add-education-row").addEventListener("click", () => {
+        const row = document.createElement("div");
+        row.className = "row-container";
+        row.innerHTML = `
+          <div class="form-inline">
+            <select class="edu-year"><option value="">--</option></select>
+            <select class="edu-month"><option value="">--</option></select>
+            <input type="text" class="edu-work" placeholder="例：〇〇大学 入学" />
+          </div>
+        `;
+        eduContainer.appendChild(row);
+
+        const newEduYear = row.querySelector(".edu-year");
+        const newEduMonth = row.querySelector(".edu-month");
+        const newEduWork = row.querySelector(".edu-work");
+        populateYear(newEduYear);
+        populateMonth(newEduMonth);
+
+        const tr = document.createElement("tr");
+        tr.className = "education-value";
+        const tdY = document.createElement("td");
+        tdY.className = "education-year-value";
+        const tdM = document.createElement("td");
+        tdM.className = "education-container-month-value";
+        const tdW = document.createElement("td");
+        tdW.className = "education-history-value";
+        tr.append(tdY, tdM, tdW);
+        eduPreviewBody.appendChild(tr);
+
+        function sync() {
+          tdY.textContent = newEduYear.value;
+          tdM.textContent = newEduMonth.value;
+          tdW.textContent = newEduWork.value;
+          splitPagesIfOverflow();
+        }
+        [newEduYear, newEduMonth, newEduWork].forEach(e =>
+          e.addEventListener("input", sync)
+        );
+      });
+      document.getElementById("remove-education-last").addEventListener("click", () => {
+        const allRows = eduContainer.querySelectorAll(".row-container");
+        if (allRows.length > 1) {
+          eduContainer.removeChild(allRows[allRows.length - 1]);
+          const allTrs = eduPreviewBody.querySelectorAll("tr");
+          if (allTrs.length > 1) {
+            eduPreviewBody.removeChild(allTrs[allTrs.length - 1]);
+          }
+          splitPagesIfOverflow();
+        }
+      });
+
+      // --- 免許・資格 ---
+      const skillContainer = document.getElementById("skill-container");
+      const skillPreviewBody = document.getElementById("preview-skill-body");
+      const defLicenseYear = skillContainer.querySelector(".license-year");
+      const defLicenseMonth = skillContainer.querySelector(".license-month");
+      const defSkillHist = skillContainer.querySelector(".skill-history");
+      const defTdSkillYear = document.querySelector(".skill-year-value");
+      const defTdSkillMonth = document.querySelector(".skill-container-month-value");
+      const defTdSkillHistory = document.querySelector(".skill-history-value");
+
+      function syncDefSkill() {
+        defTdSkillYear.textContent = defLicenseYear.value;
+        defTdSkillMonth.textContent = defLicenseMonth.value;
+        defTdSkillHistory.textContent = defSkillHist.value;
+        splitPagesIfOverflow();
+      }
+      [defLicenseYear, defLicenseMonth, defSkillHist].forEach(el =>
+        el.addEventListener("input", syncDefSkill)
+      );
+      populateYear(defLicenseYear);
+      populateMonth(defLicenseMonth);
+
+      document.getElementById("add-skill-row").addEventListener("click", () => {
+        const row = document.createElement("div");
+        row.className = "row-container";
+        row.innerHTML = `
+          <div class="form-inline">
+            <select class="license-year"><option value="">--</option></select>
+            <select class="license-month"><option value="">--</option></select>
+            <input type="text" class="skill-history" placeholder="例：普通自動車運転免許" />
+          </div>
+        `;
+        skillContainer.appendChild(row);
+
+        const newLy = row.querySelector(".license-year");
+        const newLm = row.querySelector(".license-month");
+        const newSh = row.querySelector(".skill-history");
+        populateYear(newLy);
+        populateMonth(newLm);
+
+        const tr = document.createElement("tr");
+        tr.className = "skill-value";
+        const tdY = document.createElement("td");
+        tdY.className = "skill-year-value";
+        const tdM = document.createElement("td");
+        tdM.className = "skill-container-month-value";
+        const tdH = document.createElement("td");
+        tdH.className = "skill-history-value";
+        tr.append(tdY, tdM, tdH);
+        skillPreviewBody.appendChild(tr);
+
+        function sync() {
+          tdY.textContent = newLy.value;
+          tdM.textContent = newLm.value;
+          tdH.textContent = newSh.value;
+          splitPagesIfOverflow();
+        }
+        [newLy, newLm, newSh].forEach(e =>
+          e.addEventListener("input", sync)
+        );
+      });
+      document.getElementById("remove-skill-last").addEventListener("click", () => {
+        const allRows = skillContainer.querySelectorAll(".row-container");
+        if (allRows.length > 1) {
+          skillContainer.removeChild(allRows[allRows.length - 1]);
+          const allTrs = skillPreviewBody.querySelectorAll("tr");
+          if (allTrs.length > 1) {
+            skillPreviewBody.removeChild(allTrs[allTrs.length - 1]);
+          }
+          splitPagesIfOverflow();
+        }
+      });
+
+
+      /**********************************************************
+       * 5) ページが溢れたら末尾の「.block」を次ページへ移す
+       **********************************************************/
+      function splitPagesIfOverflow() {
+        // (A) 2ページ目以降を削除 → 1ページ目に全部戻す
+        const pages = pagesContainer.querySelectorAll(".resume-page");
+        if (pages.length > 1) {
+          for (let i = 1; i < pages.length; i++) {
+            pagesContainer.removeChild(pages[i]);
+          }
+        }
+        let page1 = pages[0];
+        let content1 = page1.querySelector(".resume-content");
+
+        // (B) 溢れているかチェック
+        let isOverflow = checkOverflow(page1, content1);
+
+        while (isOverflow) {
+          // 新ページ
+          const nextPage = createBlankPage();
+          const nextContent = nextPage.querySelector(".resume-content");
+
+          // 末尾の .block を次ページへ移動
+          while (isOverflow) {
+            const blocks = content1.querySelectorAll(".block");
+            if (!blocks.length) break;
+            const lastBlock = blocks[blocks.length - 1];
+
+            nextContent.insertBefore(lastBlock, nextContent.firstChild);
+            isOverflow = checkOverflow(page1, content1);
+          }
+
+          // 次ページが溢れてたらさらに追加
+          if (checkOverflow(nextPage, nextContent)) {
+            isOverflow = true;
+            page1 = nextPage;
+            content1 = nextContent;
+          } else {
+            isOverflow = false;
+          }
+        }
+      }
+
+      function createBlankPage() {
+        const pageEl = document.createElement("div");
+        pageEl.classList.add("resume-page");
+        pageEl.innerHTML = `
+          <div class="resume-preview">
+            <div class="resume-content"></div>
+          </div>`;
+        pagesContainer.appendChild(pageEl);
+        return pageEl;
+      }
+
+      function checkOverflow(pageEl, contentEl) {
+        return contentEl.scrollHeight > pageEl.clientHeight;
+      }
+
+
+      /**********************************************************
+       * 6) PDF保存ボタン
+       **********************************************************/
+      document.getElementById("pdf-save-btn").addEventListener("click", () => {
+        // ページ分割最終確認
+        splitPagesIfOverflow();
+
+        const opt = {
+          margin: 0,
+          filename: "履歴書.pdf",
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
+          pagebreak: { mode: ["css", "legacy"] },
+        };
+        html2pdf().set(opt).from(pagesContainer).save();
+      });
+
+
+      /**********************************************************
+       * 7) 「一括生成する」ボタン
+       **********************************************************/
+      document.getElementById("bulk-generate-btn").addEventListener("click", () => {
+        const file = document.getElementById("resume-file").files[0];
+        const additional = document.getElementById("additional-info").value;
+        alert("『一括生成する』が押されました。ファイル=" + file + ", 情報=" + additional);
+      });
+
+      // 初回実行
+      splitPagesIfOverflow();
+    </script>
+  </body>
+</html>
