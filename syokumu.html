@@ -24,11 +24,15 @@
     /* 全体レイアウト */
     .container {
       display: flex;
-      min-height: 100vh;
+      /* heightを画面いっぱいに固定し、全体のスクロールを抑制 */
+      height: 100vh;
+      overflow: hidden;
     }
     .left, .right {
       width: 50%;
       padding: 20px;
+      /* それぞれのカラムを個別スクロール */
+      overflow-y: auto;
     }
     .left {
       /* 左カラム */
